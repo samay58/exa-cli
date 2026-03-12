@@ -1,0 +1,5 @@
+.DS_Store
+/exa-cli
+/bin/
+/coverage.out
+docs/REFERENCE.generated.md
