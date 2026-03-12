@@ -563,6 +563,45 @@ func jsonResponse(body string) *http.Response {
 	}
 }
 
+func TestFindWithExplicitProfile(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := executeTest(
+		t,
+		[]string{"find", "golang", "--profile", "instant", "--format", "json", "--no-cache"},
+		testEnv(t, map[string]string{
+			"EXA_API_KEY": "test-key",
+		}),
+		roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return jsonResponse(`{
+				"requestId":"req_profile",
+				"type":"instant",
+				"searchTime":0.05,
+				"results":[{"title":"Result","url":"https://example.com"}]
+			}`), nil
+		}),
+		&stdout,
+		&stderr,
+	)
+
+	if code != 0 {
+		t.Fatalf("find --profile instant failed with code %d: %s", code, stderr.String())
+	}
+
+	var envelope struct {
+		Meta struct {
+			Profile string `json:"profile"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if envelope.Meta.Profile != "instant" {
+		t.Fatalf("expected profile instant, got %q", envelope.Meta.Profile)
+	}
+}
+
 func mustOpen(t *testing.T, path string) io.ReadCloser {
 	t.Helper()
 	file, err := os.Open(path)

@@ -177,12 +177,10 @@ func (a *App) initRuntime(cmd *cobra.Command) error {
 		a.options.FormatSource = "flag"
 	}
 
-	if !cmd.Flags().Changed("profile") {
-		if v := strings.TrimSpace(a.env["EXA_CLI_PROFILE"]); v != "" {
-			a.options.Profile = v
-		} else if cfg.Profile != "" {
-			a.options.Profile = cfg.Profile
-		}
+	if v := strings.TrimSpace(a.env["EXA_CLI_PROFILE"]); v != "" {
+		a.options.Profile = v
+	} else if cfg.Profile != "" {
+		a.options.Profile = cfg.Profile
 	}
 
 	if !cmd.Flags().Changed("no-banner") {
