@@ -123,6 +123,8 @@ The LLM format fix was the most impactful change: before the fix, `read --summar
 | `internal/app/helpers.go` | Fixed validateCategoryFilters to allow --exclude-domain for uncategorized search |
 | `internal/app/output_test.go` | Added 4 tests covering both fixes |
 | `Makefile` | Added `make install` target |
+| `internal/app/app.go` | Fixed initRuntime profile guard that blocked `find --profile` (follow-up session) |
+| `internal/app/app_test.go` | Added regression test for explicit --profile flag (follow-up session) |
 
 ## Open Issues (pre-existing, not changed)
 

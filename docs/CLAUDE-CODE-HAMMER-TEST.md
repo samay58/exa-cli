@@ -79,6 +79,7 @@ Use exa-cli as if it were one of your own core tools. Drive it manually and recu
   - env -u EXA_API_KEY ./bin/exa-cli auth status --format json
 - search, answer, code, and read:
   - env -u EXA_API_KEY ./bin/exa-cli find "Exa search API docs" --num-results 3 --format json --no-cache
+  - env -u EXA_API_KEY ./bin/exa-cli find "test" --profile instant --format json --no-cache (verify --profile works with local flag)
   - env -u EXA_API_KEY ./bin/exa-cli ask "How does Exa answer differ from search?" --format markdown --no-cache
   - env -u EXA_API_KEY ./bin/exa-cli code "How should a Go Cobra app split smart and raw commands?" --format llm --no-cache
   - env -u EXA_API_KEY ./bin/exa-cli read https://exa.ai/docs/reference/search --summary --format markdown --no-cache
@@ -91,6 +92,7 @@ Use exa-cli as if it were one of your own core tools. Drive it manually and recu
 - failure and machine-contract probes:
   - ./bin/exa-cli version --format json
   - ./bin/exa-cli version --format yaml and confirm clean failure
+  - env -u EXA_API_KEY ./bin/exa-cli find "test" --exclude-domain example.com (should succeed, not reject)
   - malformed raw request input
   - JSON piping through jq when available
   - NO_COLOR=1
