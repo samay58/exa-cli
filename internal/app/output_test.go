@@ -157,3 +157,60 @@ func TestWriteEnvelopeJSONLContract(t *testing.T) {
 		t.Fatalf("expected record lines after meta, got %+v", lines)
 	}
 }
+
+func TestRenderLLMIncludesResultSnippets(t *testing.T) {
+	envelope := Envelope{
+		Meta: Meta{Command: "read"},
+		Data: map[string]any{
+			"results": []any{
+				map[string]any{
+					"title":   "Search - Exa",
+					"url":     "https://exa.ai/docs/reference/search",
+					"summary": "API documentation for Exa search endpoint.",
+				},
+			},
+		},
+	}
+
+	output := renderLLM(envelope, false)
+	if !strings.Contains(output, "API documentation for Exa search endpoint.") {
+		t.Fatalf("expected LLM format to include per-result summary, got:\n%s", output)
+	}
+}
+
+func TestRenderLLMIncludesHighlightsWhenNoSnippet(t *testing.T) {
+	envelope := Envelope{
+		Meta: Meta{Command: "find"},
+		Data: map[string]any{
+			"results": []any{
+				map[string]any{
+					"title":      "Result Page",
+					"url":        "https://example.com",
+					"highlights": []any{"important context from the page"},
+				},
+			},
+		},
+	}
+
+	output := renderLLM(envelope, false)
+	if !strings.Contains(output, "important context from the page") {
+		t.Fatalf("expected LLM format to include highlights, got:\n%s", output)
+	}
+}
+
+func TestValidateCategoryFiltersAllowsExcludeDomainWithoutCategory(t *testing.T) {
+	err := validateCategoryFilters("", nil, []string{"example.com"})
+	if err != nil {
+		t.Fatalf("expected exclude-domain to be allowed without category, got: %v", err)
+	}
+}
+
+func TestValidateCategoryFiltersBlocksExcludeDomainForCompany(t *testing.T) {
+	err := validateCategoryFilters("company", nil, []string{"example.com"})
+	if err == nil {
+		t.Fatal("expected company category to reject exclude-domain")
+	}
+	if !strings.Contains(err.Error(), "company search") {
+		t.Fatalf("expected company-specific error message, got: %v", err)
+	}
+}

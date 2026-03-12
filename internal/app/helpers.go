@@ -159,7 +159,7 @@ func normalizeAPIError(err error) error {
 func validateCategoryFilters(category string, includeDomains, excludeDomains []string) error {
 	category = strings.ToLower(strings.TrimSpace(category))
 	switch category {
-	case "", "company":
+	case "company":
 		if len(excludeDomains) > 0 {
 			return errors.New("company search does not support --exclude-domain in Exa's current API")
 		}

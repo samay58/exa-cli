@@ -29,6 +29,11 @@ func renderLLM(envelope Envelope, verbose bool) string {
 				if url != "" {
 					lines = append(lines, "   "+url)
 				}
+				if snippet := resultSnippet(envelope.Meta.Command, result, 1200); snippet != "" {
+					lines = append(lines, "   "+snippet)
+				} else if highlights, ok := result["highlights"].([]any); ok && len(highlights) > 0 {
+					lines = append(lines, "   "+condense(strings.Join(stringSlice(highlights), " | "), 1200))
+				}
 			}
 		}
 		if verbose {

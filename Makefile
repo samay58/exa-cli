@@ -1,10 +1,13 @@
 GO ?= go
 
-.PHONY: build fmt test test-cover test-live docs battle-test battle-test-live
+.PHONY: build install fmt test test-cover test-live docs battle-test battle-test-live
 
 build:
 	mkdir -p ./bin
 	$(GO) build -o ./bin/exa-cli ./cmd/exa-cli
+
+install: build
+	cp ./bin/exa-cli /usr/local/bin/exa-cli
 
 fmt:
 	$(GO) fmt ./...
