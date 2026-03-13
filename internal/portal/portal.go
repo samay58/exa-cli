@@ -13,23 +13,21 @@ const reset = "\x1b[0m"
 
 func Render(color bool) string {
 	art := []string{
-		`                 __..------------------..__`,
-		`              .-'                          '-.`,
-		`            .'      ______   __  __      /\   '.`,
-		`           /       / ____/   \ \/ /     /  \   \`,
-		`          ;       / __/       >  <     / /\ \   ;`,
-		`          |      / /___      /_/\_\   / ____ \  |`,
-		`          ;     /_____/              /_/    \_\ ;`,
-		`           \            .-..____..-.            /`,
-		`            '.        .'  /      \  '.        .'`,
-		`              '-._  .'   /________\   '.  _.-'`,
-		`                   ''--..____________..--''`,
+		`            .-----------------------------.`,
+		`         .'                                 '.`,
+		`       .'     ▄▄▄▄▄  ▄   ▄  ▄▄▄▄▄            '.`,
+		`      /       █      ▀▄ ▄▀  █   █               \`,
+		`     |        █▄▄▄    ▀█▀   █▄▄▄█                |`,
+		`      \       █      ▄▀ ▀▄  █   █               /`,
+		`       '.     ▀▀▀▀▀  ▀   ▀  ▀   ▀            .'`,
+		`         '.                                 .'`,
+		`            '-----------------------------'`,
 	}
 
 	lines := make([]string, 0, len(art)+4)
 	for idx, line := range art {
 		if color {
-			palette := []string{mist, blue, cobalt, blue, cobalt, blue, cobalt, mist, cyan, cobalt, mist}
+			palette := []string{mist, cyan, cobalt, blue, blue, blue, cobalt, cyan, mist}
 			lines = append(lines, palette[idx%len(palette)]+line+reset)
 			continue
 		}

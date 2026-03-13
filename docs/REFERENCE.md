@@ -307,6 +307,7 @@ Examples:
 exa-cli find "Go CLI design patterns for machine-readable output"
 exa-cli find "AI infra companies building eval tooling" --category company
 exa-cli find "Rust sqlite WAL mode" --profile fast --format json
+exa-cli find "SEC filings for NVIDIA Q4 2025" --profile deep --system-prompt "Focus on revenue breakdown and forward guidance"
 ```
 
 Flags:
@@ -315,7 +316,9 @@ Flags:
 - `--exclude-domain`: Exclude the provided domains
 - `--include-domain`: Limit search to the provided domains
 - `--num-results`: Number of results to request
-- `--profile`: Latency/cost profile: instant, fast, balanced, deep, reasoned
+- `--output-schema`: Path to JSON schema file for structured deep search output (use - for stdin)
+- `--profile`: Latency/cost profile: instant, fast, balanced (default), deep ($12/1k, 4-12s), reasoned ($15/1k, 12-50s)
+- `--system-prompt`: Instructions to guide deep search synthesis (deep and reasoned profiles)
 
 Inherited flags:
 
@@ -701,6 +704,8 @@ Examples:
 ```bash
 exa-cli research run "design a search CLI for coding agents"
 exa-cli research run "map the AI code search landscape" --detach
+exa-cli research run "NVIDIA Q4 2025 earnings" --save
+exa-cli research run "AI infrastructure landscape" --save ai-infra
 ```
 
 Flags:
@@ -709,6 +714,7 @@ Flags:
 - `--model`: Research model: exa-research or exa-research-pro
 - `--poll-interval`: Polling interval for attached research runs
 - `--quiet`: Suppress progress updates while waiting for completion
+- `--save`: Save report to a markdown file (auto-names from query when used without a value)
 
 Inherited flags:
 

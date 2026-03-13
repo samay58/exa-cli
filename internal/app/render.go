@@ -36,6 +36,10 @@ func renderLLM(envelope Envelope, verbose bool) string {
 				}
 			}
 		}
+		if grounding := renderGrounding(payload); len(grounding) > 0 {
+			lines = append(lines, "")
+			lines = append(lines, grounding...)
+		}
 		if verbose {
 			lines = append(lines, "")
 			lines = append(lines, fmt.Sprintf("request_id: %s", envelope.Meta.RequestID))
@@ -82,6 +86,13 @@ func renderMarkdown(envelope Envelope, verbose bool) string {
 				if highlights, ok := result["highlights"].([]any); ok && len(highlights) > 0 {
 					lines = append(lines, "  Highlights: "+strings.Join(stringSlice(highlights), " | "))
 				}
+			}
+		}
+
+		if grounding := renderGrounding(payload); len(grounding) > 0 {
+			lines = append(lines, "", "### Citations")
+			for _, g := range grounding[1:] {
+				lines = append(lines, "- "+strings.TrimSpace(g))
 			}
 		}
 
@@ -142,6 +153,11 @@ func renderTable(envelope Envelope) string {
 		lines = append(lines, "", condense(text, 800))
 	}
 
+	if grounding := renderGrounding(payload); len(grounding) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, grounding...)
+	}
+
 	if results, ok := payload["results"].([]any); ok && len(results) > 0 {
 		lines = append(lines, "", "results:")
 		for idx, item := range results {
@@ -184,6 +200,11 @@ func bestNarrativeText(payload map[string]any) string {
 	}
 	if outputMap, ok := payload["output"].(map[string]any); ok {
 		candidates = append(candidates, asString(outputMap["content"]))
+		if contentMap, ok := outputMap["content"].(map[string]any); ok {
+			if data, err := json.MarshalIndent(contentMap, "", "  "); err == nil {
+				candidates = append(candidates, string(data))
+			}
+		}
 	}
 	if report, ok := payload["report"].(string); ok {
 		candidates = append(candidates, report)
@@ -277,4 +298,51 @@ func isInitialism(value string) bool {
 	default:
 		return false
 	}
+}
+
+func renderGrounding(payload map[string]any) []string {
+	outputMap, ok := payload["output"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	items, ok := outputMap["grounding"].([]any)
+	if !ok || len(items) == 0 {
+		return nil
+	}
+	var lines []string
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		field := asString(entry["fieldPath"])
+		sources, ok := entry["sources"].([]any)
+		if !ok || len(sources) == 0 {
+			continue
+		}
+		var citations []string
+		for _, src := range sources {
+			s, ok := src.(map[string]any)
+			if !ok {
+				continue
+			}
+			url := asString(s["url"])
+			confidence := asString(s["confidence"])
+			if url == "" {
+				continue
+			}
+			if confidence != "" {
+				citations = append(citations, url+" ("+confidence+")")
+			} else {
+				citations = append(citations, url)
+			}
+		}
+		if len(citations) > 0 && field != "" {
+			lines = append(lines, fmt.Sprintf("  %s: %s", field, strings.Join(citations, ", ")))
+		}
+	}
+	if len(lines) > 0 {
+		return append([]string{"citations:"}, lines...)
+	}
+	return nil
 }

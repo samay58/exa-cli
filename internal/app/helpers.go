@@ -286,6 +286,27 @@ func coerceFloat(value any) float64 {
 	return 0
 }
 
+func slugify(text string, maxLen int) string {
+	text = strings.ToLower(strings.TrimSpace(text))
+	var buf []byte
+	prevHyphen := false
+	for _, r := range text {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			buf = append(buf, byte(r))
+			prevHyphen = false
+		} else if !prevHyphen && len(buf) > 0 {
+			buf = append(buf, '-')
+			prevHyphen = true
+		}
+	}
+	slug := strings.Trim(string(buf), "-")
+	if maxLen > 0 && len(slug) > maxLen {
+		slug = slug[:maxLen]
+		slug = strings.TrimRight(slug, "-")
+	}
+	return slug
+}
+
 func sortedKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {

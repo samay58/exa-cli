@@ -3,6 +3,7 @@ package portal
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestRenderPlainPortalHasNoANSI(t *testing.T) {
@@ -10,7 +11,7 @@ func TestRenderPlainPortalHasNoANSI(t *testing.T) {
 	if strings.Contains(output, "\x1b[") {
 		t.Fatalf("did not expect ANSI escapes in plain portal output:\n%s", output)
 	}
-	if !strings.Contains(output, "______") || !strings.Contains(output, "built for shells, prompts, and long threads.") {
+	if !strings.Contains(output, "\u2584\u2584\u2584\u2584\u2584") || !strings.Contains(output, "built for shells, prompts, and long threads.") {
 		t.Fatalf("expected portal art and tagline, got:\n%s", output)
 	}
 }
@@ -28,8 +29,8 @@ func TestRenderColorPortalIncludesANSI(t *testing.T) {
 func TestRenderPortalStaysCompact(t *testing.T) {
 	output := Render(false)
 	for _, line := range strings.Split(output, "\n") {
-		if len(line) > 52 {
-			t.Fatalf("expected compact portal, found %d-column line:\n%s", len(line), line)
+		if utf8.RuneCountInString(line) > 52 {
+			t.Fatalf("expected compact portal, found %d-column line:\n%s", utf8.RuneCountInString(line), line)
 		}
 	}
 }

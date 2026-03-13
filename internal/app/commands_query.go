@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -12,11 +14,13 @@ import (
 
 func (a *App) newFindCmd() *cobra.Command {
 	var (
-		numResults     int
-		category       string
-		includeDomains []string
-		excludeDomains []string
-		profile        string
+		numResults       int
+		category         string
+		includeDomains   []string
+		excludeDomains   []string
+		profile          string
+		systemPrompt     string
+		outputSchemaPath string
 	)
 
 	cmd := &cobra.Command{
@@ -26,6 +30,7 @@ func (a *App) newFindCmd() *cobra.Command {
 			`exa-cli find "Go CLI design patterns for machine-readable output"`,
 			`exa-cli find "AI infra companies building eval tooling" --category company`,
 			`exa-cli find "Rust sqlite WAL mode" --profile fast --format json`,
+			`exa-cli find "SEC filings for NVIDIA Q4 2025" --profile deep --system-prompt "Focus on revenue breakdown and forward guidance"`,
 		}, "\n"),
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -44,6 +49,19 @@ func (a *App) newFindCmd() *cobra.Command {
 				return wrap(2, err)
 			}
 
+			var outputSchema map[string]any
+			if outputSchemaPath != "" {
+				raw, err := readInputPayload(outputSchemaPath, nil, a.in)
+				if err != nil {
+					return wrap(2, fmt.Errorf("reading output schema: %w", err))
+				}
+				if m, ok := raw.(map[string]any); ok {
+					outputSchema = m
+				} else {
+					return wrap(2, fmt.Errorf("output schema must be a JSON object"))
+				}
+			}
+
 			query := strings.Join(args, " ")
 			req := exa.SearchRequest{
 				Query:          query,
@@ -52,6 +70,8 @@ func (a *App) newFindCmd() *cobra.Command {
 				NumResults:     numResults,
 				IncludeDomains: includeDomains,
 				ExcludeDomains: excludeDomains,
+				SystemPrompt:   systemPrompt,
+				OutputSchema:   outputSchema,
 				Contents: map[string]any{
 					"highlights": map[string]any{"maxCharacters": 280},
 				},
@@ -75,7 +95,9 @@ func (a *App) newFindCmd() *cobra.Command {
 	cmd.Flags().StringVar(&category, "category", "", "Optional search category, for example company or people")
 	cmd.Flags().StringSliceVar(&includeDomains, "include-domain", nil, "Limit search to the provided domains")
 	cmd.Flags().StringSliceVar(&excludeDomains, "exclude-domain", nil, "Exclude the provided domains")
-	cmd.Flags().StringVar(&profile, "profile", config.DefaultProfile, "Latency/cost profile: instant, fast, balanced, deep, reasoned")
+	cmd.Flags().StringVar(&profile, "profile", config.DefaultProfile, "Latency/cost profile: instant, fast, balanced (default), deep ($12/1k, 4-12s), reasoned ($15/1k, 12-50s)")
+	cmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "Instructions to guide deep search synthesis (deep and reasoned profiles)")
+	cmd.Flags().StringVar(&outputSchemaPath, "output-schema", "", "Path to JSON schema file for structured deep search output (use - for stdin)")
 	return cmd
 }
 
@@ -224,6 +246,7 @@ func (a *App) newResearchCmd() *cobra.Command {
 		pollInterval time.Duration
 		limit        int
 		quiet        bool
+		savePath     string
 	)
 
 	researchCmd := &cobra.Command{
@@ -237,6 +260,8 @@ func (a *App) newResearchCmd() *cobra.Command {
 		Example: strings.Join([]string{
 			`exa-cli research run "design a search CLI for coding agents"`,
 			`exa-cli research run "map the AI code search landscape" --detach`,
+			`exa-cli research run "NVIDIA Q4 2025 earnings" --save`,
+			`exa-cli research run "AI infrastructure landscape" --save ai-infra`,
 		}, "\n"),
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -268,13 +293,21 @@ func (a *App) newResearchCmd() *cobra.Command {
 				return err
 			}
 			statusMeta.Command = "research run"
-			return a.writeEnvelope(statusPayload, statusMeta, "markdown")
+			if err := a.writeEnvelope(statusPayload, statusMeta, "markdown"); err != nil {
+				return err
+			}
+			if cmd.Flags().Changed("save") {
+				return a.saveResearchReport(statusPayload, statusMeta, savePath, req.Instructions)
+			}
+			return nil
 		},
 	}
 	runCmd.Flags().BoolVar(&detach, "detach", false, "Return the task ID immediately instead of waiting for completion")
 	runCmd.Flags().StringVar(&model, "model", "exa-research", "Research model: exa-research or exa-research-pro")
 	runCmd.Flags().DurationVar(&pollInterval, "poll-interval", 5*time.Second, "Polling interval for attached research runs")
 	runCmd.Flags().BoolVar(&quiet, "quiet", false, "Suppress progress updates while waiting for completion")
+	runCmd.Flags().StringVar(&savePath, "save", "", "Save report to a markdown file (auto-names from query when used without a value)")
+	runCmd.Flags().Lookup("save").NoOptDefVal = "auto"
 
 	getCmd := &cobra.Command{
 		Use:   "get <id>",
@@ -332,4 +365,22 @@ func (a *App) newResearchCmd() *cobra.Command {
 
 	researchCmd.AddCommand(runCmd, getCmd, listCmd, cancelCmd)
 	return researchCmd
+}
+
+func (a *App) saveResearchReport(payload map[string]any, meta Meta, savePath, query string) error {
+	filename := savePath
+	if filename == "auto" {
+		filename = slugify(query, 60) + ".md"
+	} else if !strings.HasSuffix(filename, ".md") {
+		filename += ".md"
+	}
+
+	envelope := Envelope{Meta: meta, Data: payload}
+	md := renderMarkdown(envelope, false)
+
+	if err := os.WriteFile(filename, []byte(md+"\n"), 0644); err != nil {
+		return wrap(1, fmt.Errorf("saving report to %s: %w", filename, err))
+	}
+	fmt.Fprintf(a.errOut, "saved: %s\n", filename)
+	return nil
 }
