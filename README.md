@@ -1,36 +1,38 @@
 # exa-cli
 
-`exa-cli` is a clean-slate, agent-native command line interface for Exa. It is designed for fast human use, reliable shell composition, and high-signal workflows inside coding agents like Codex and Claude Code.
+The problem with most search CLIs is that they start simple. One binary, one command. Then someone adds a subcommand for a new API endpoint. Then one for a different output format. Then a wrapper for an async workflow nobody wanted to handle manually. Six months later you have three install methods, a plugin system, and agents spend more time navigating command families than doing actual searches.
 
-## Quick Start
+exa-cli is built against that. Everything is an extension of `find`, not a parallel track alongside it.
 
-Build locally:
+## Quick start
+
+Build it:
 
 ```bash
 make build
 ```
 
-If you have not installed `exa-cli` onto `PATH`, use `./bin/exa-cli` in the commands below.
+If you haven't put `exa-cli` on your PATH yet, use `./bin/exa-cli` for everything below.
 
-Authenticate locally with an API key:
+Store your API key:
 
 ```bash
 ./bin/exa-cli auth login
 ```
 
-Or pipe it without echoing it into shell history:
+Or pipe it in without touching shell history:
 
 ```bash
 printf '%s\n' "your-key" | ./bin/exa-cli auth login --stdin
 ```
 
-Use `EXA_API_KEY` for CI, one-off shells, or when you do not want to write local config:
+For CI or one-off shells where you don't want local config at all:
 
 ```bash
 EXA_API_KEY="your-key" ./bin/exa-cli find "query"
 ```
 
-Run the core workflows:
+Then run something:
 
 ```bash
 ./bin/exa-cli find "best practices for Go CLI UX"
@@ -41,169 +43,147 @@ Run the core workflows:
 ./bin/exa-cli mcp print codex
 ```
 
-Add `--text` to `read` only when you want the full page body:
+Add `--text` to `read` when you want the full page body, not just a summary:
 
 ```bash
 ./bin/exa-cli read https://exa.ai/docs/reference/search --summary --text
 ```
 
-## Design Goals
+## Why it's designed this way
 
-The goal is not to mirror every surface area of larger research CLIs. The goal is to be sharper:
+The design goal is predictability under composition. That matters more when an agent is running the tool than when a human is, because a human can read an error message and adapt. An agent just fails.
 
-- one binary name
-- one primary search verb
-- deterministic JSON and JSONL output
-- explicit latency and cost profiles
-- first-class code-context workflows
-- lightweight local caching
-- documentation that stays aligned with the binary
+`ask` and `code` are `find` with intent applied, not separate tools. `research run` hides the async start/poll loop so you ask a question and get an answer without writing a polling loop yourself. `raw` commands drop the smart defaults entirely when you need exact API control. And `mcp print` generates copy-pasteable client config, keyless by default, because secrets don't belong in shell history or screenshots.
 
-## Why This Exists
+## Commands
 
-Many research CLIs accumulate too many install surfaces, too many command families, and too much orchestration burden for agents.
+**Smart commands** (opinionated defaults, human-readable output):
 
-`exa-cli` takes the opposite position:
+```
+exa-cli find <query>
+exa-cli ask <question>
+exa-cli code <query>
+exa-cli read <url-or-id...>
+exa-cli research run <query>
+exa-cli research get <id>
+exa-cli research list
+exa-cli research cancel <id>
+exa-cli mcp print <codex|claude-code|cursor|generic>
+exa-cli mcp doctor
+exa-cli auth status|login|logout
+exa-cli doctor
+exa-cli cache stats|prune|clear
+exa-cli config show|path|init
+```
 
-- `find` is the center of gravity
-- `research run` hides the start/poll dance unless you explicitly detach
-- `raw` commands preserve exact API control without forcing every workflow to feel low-level
-- MCP helpers emit copy-pasteable client snippets instead of assuming one editor or agent
-- config is small, local, and inspectable
+**Raw commands** (exact API access, no defaults applied):
 
-## Current V1 Surface
+```
+exa-cli raw request
+exa-cli raw search
+exa-cli raw answer
+exa-cli raw contents
+exa-cli raw context
+exa-cli raw research start|get|cancel
+```
 
-Smart commands:
+## Output formats
 
-- `exa-cli find <query>`
-- `exa-cli ask <question>`
-- `exa-cli code <query>`
-- `exa-cli read <url-or-id...>`
-- `exa-cli research run <query>`
-- `exa-cli research get <id>`
-- `exa-cli research list`
-- `exa-cli research cancel <id>`
-- `exa-cli mcp print <codex|claude-code|cursor|generic>`
-- `exa-cli mcp doctor`
-- `exa-cli auth status|login|logout`
-- `exa-cli doctor`
-- `exa-cli cache stats|prune|clear`
-- `exa-cli config show|path|init`
+Every high-signal command supports `--format`:
 
-Raw commands:
+| Flag | Best for |
+|------|----------|
+| `table` | Fast human scanning |
+| `markdown` | Terminal output and prompt handoff |
+| `json` | Stable envelopes for piping |
+| `jsonl` | Record streams |
+| `llm` | Direct agent consumption |
 
-- `exa-cli raw request`
-- `exa-cli raw search`
-- `exa-cli raw answer`
-- `exa-cli raw contents`
-- `exa-cli raw context`
-- `exa-cli raw research start|get|cancel`
+Every JSON response includes `meta` (command, profile, cache state, request ID, timing and cost hints) and `data` (endpoint payload).
 
-## Output Modes
+## Config and cache
 
-Every high-signal command supports:
+Default paths:
 
-- `--format table` for fast human scanning
-- `--format markdown` for readable terminal output and prompt handoff
-- `--format json` for stable envelopes
-- `--format jsonl` for record streams
-- `--format llm` for direct agent consumption
+| | macOS | Linux |
+|---|---|---|
+| Config | `~/Library/Application Support/exa-cli/config.toml` | `~/.config/exa-cli/config.toml` |
+| Cache | `~/Library/Caches/exa-cli/cache.db` | `~/.cache/exa-cli/cache.db` |
 
-The JSON envelope always has:
+Precedence: flags > environment variables > config file.
 
-- `meta`: command, profile, cache state, request ID, timing/cost hints
-- `data`: endpoint-specific payload
+Key environment variables:
 
-## Config And Cache
+```
+EXA_API_KEY
+EXA_BASE_URL
+EXA_CLI_CONFIG
+EXA_CLI_FORMAT
+EXA_CLI_PROFILE
+EXA_CLI_NO_BANNER
+EXA_CLI_NO_CACHE
+EXA_MCP_URL
+NO_COLOR
+```
 
-Defaults:
+## MCP setup
 
-- config path: `os.UserConfigDir()/exa-cli/config.toml`
-- cache path: `os.UserCacheDir()/exa-cli/cache.db`
-
-Typical paths:
-
-- macOS config: `~/Library/Application Support/exa-cli/config.toml`
-- macOS cache: `~/Library/Caches/exa-cli/cache.db`
-- Linux config: `~/.config/exa-cli/config.toml`
-- Linux cache: `~/.cache/exa-cli/cache.db`
-
-Precedence:
-
-- flags
-- environment variables
-- config file
-
-Important environment variables:
-
-- `EXA_API_KEY`
-- `EXA_BASE_URL`
-- `EXA_CLI_CONFIG`
-- `EXA_CLI_FORMAT`
-- `EXA_CLI_PROFILE`
-- `EXA_CLI_NO_BANNER`
-- `EXA_CLI_NO_CACHE`
-- `EXA_MCP_URL`
-- `NO_COLOR`
-
-## MCP Setup
-
-`exa-cli mcp print` is keyless by default. That keeps secrets out of shell history, copied config, and screenshots.
+`mcp print` is keyless by default. That keeps secrets out of shell history, copied config, and screenshots.
 
 ```bash
 exa-cli mcp print codex
 exa-cli mcp print claude-code --all-tools
 ```
 
-Only use `--embed-key` if you explicitly want a secret-bearing snippet:
+Use `--embed-key` only when you explicitly want a key baked into the snippet:
 
 ```bash
 exa-cli mcp print cursor --embed-key
 ```
 
-## Raw Control
+## Raw API access
 
-Use the `raw request` escape hatch when you need exact Exa API control:
+When the smart commands aren't the right fit, drop down to `raw request`:
 
 ```bash
 exa-cli raw request --method POST --path /search --input request.json
 printf '%s\n' '{"query":"golang sqlite wal"}' | exa-cli raw request --method POST --path /search --input -
 ```
 
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Workflows](docs/WORKFLOWS.md)
-- [Caching And Costs](docs/CACHING-AND-COSTS.md)
-- [Testing](docs/TESTING.md)
-- [Claude Code Hammer Test](docs/CLAUDE-CODE-HAMMER-TEST.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Roadmap](docs/ROADMAP.md)
-- [CLI Reference](docs/REFERENCE.md)
-
-Regenerate the reference docs from the live command tree:
-
-```bash
-make docs
-```
-
 ## Testing
 
-The project ships with three layers of verification:
+Three layers:
 
-- `make test` for fast deterministic coverage
-- `go test -cover ./...` for coverage and snapshot checks
-- `make battle-test` for the compiled-binary smoke matrix
+```bash
+make test              # fast, deterministic
+go test -cover ./...   # coverage + snapshot checks
+make battle-test       # compiled-binary smoke matrix
+```
 
-For a deeper agentic dogfooding pass, use the maintained Claude Code workflow prompt in [docs/CLAUDE-CODE-HAMMER-TEST.md](docs/CLAUDE-CODE-HAMMER-TEST.md).
+For a deeper agentic pass, use the Claude Code workflow prompt in [docs/CLAUDE-CODE-HAMMER-TEST.md](docs/CLAUDE-CODE-HAMMER-TEST.md).
 
-Opt-in live API verification:
+Live API verification (uses key from `exa-cli auth login` if `EXA_API_KEY` isn't set):
 
 ```bash
 make test-live
 make battle-test-live
 ```
 
-Both live commands use the key stored by `exa-cli auth login` if `EXA_API_KEY` is not already set.
+Full testing docs: [docs/TESTING.md](docs/TESTING.md).
 
-The full testing workflow is documented in [docs/TESTING.md](docs/TESTING.md).
+## Docs
+
+Regenerate the CLI reference from the live command tree:
+
+```bash
+make docs
+```
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Workflows](docs/WORKFLOWS.md)
+- [Caching and costs](docs/CACHING-AND-COSTS.md)
+- [Testing](docs/TESTING.md)
+- [Claude Code hammer test](docs/CLAUDE-CODE-HAMMER-TEST.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Roadmap](docs/ROADMAP.md)
+- [CLI reference](docs/REFERENCE.md)
