@@ -1,5 +1,9 @@
 # exa-cli
 
+<p align="center">
+  <img src="cover-art/cover.png" alt="exa-cli cover art" width="100%" />
+</p>
+
 The problem with most search CLIs is that they start simple. One binary, one command. Then someone adds a subcommand for a new API endpoint. Then one for a different output format. Then a wrapper for an async workflow nobody wanted to handle manually. Six months later you have three install methods, a plugin system, and agents spend more time navigating command families than doing actual searches.
 
 exa-cli is built against that. Everything is an extension of `find`, not a parallel track alongside it.
